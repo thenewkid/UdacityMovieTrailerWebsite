@@ -10,11 +10,9 @@ window.onload = function() {
 		form.youtube_trailer_link
 	];
 
+
 	//call our assignInputs on the input_box list
 	assignInputs(input_boxes);
-
-	//get our from element that sends new movie trailer data
-	
 
 	//add a jquery submit function to do some sanity checks on the input
 	//its very easy to look at the html code using dev tools and remove the required 
@@ -41,8 +39,10 @@ window.onload = function() {
 		console.log(inputs_need_correction)
 		if (inputs_need_correction.length > 0) {
 			createErr(inputs_need_correction);
+			return false;
 		}
-		return false	
+		
+		return true;
 	})
 
 	
@@ -81,7 +81,7 @@ function createErr(user_input_errors) {
 	err_div.innerHTML = ""
 	err_div.innerHTML += "<h3>The Following fields need to be corrected</h3>";
 	each(user_input_errors, function(e) {
-		err_div.innerHTML += "<p>" + e + "</p>";
+		err_div.innerHTML += "<p class='err_msg lead'>" + e + "</p>";
 	})
 }
 //takes in a element and a class name (bootstrap class name)
