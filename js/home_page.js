@@ -15,7 +15,7 @@ window.onload = function() {
 	//add a jquery submit function to do some sanity checks on the input
 	//its very easy to look at the html code using dev tools and remove the required 
 	//attributes from the input fields, thus allowing somebody to send bad data to the server
-	$("#submit_button").click(function() {
+	document.getElementById("submit_button").onclick = function() {
 
 		//any inputs that need to be checked we can place them in here
 		//so the user knows what to be corrected
@@ -57,7 +57,7 @@ window.onload = function() {
 				}
 			})
 		}
-	})
+	}
 
 	
 }

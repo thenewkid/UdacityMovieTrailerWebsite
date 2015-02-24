@@ -13,6 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+#https://www.youtube.com/watch?v=R2qHKXL-_vw best of ipman 
+#https://www.youtube.com/watch?v=jGoVzVCXCwU top 5 fight scenes
+#https://www.youtube.com/watch?v=-W1qR80oOt4 the book of eli barfight scene
 #
 import webapp2
 import os
@@ -72,7 +76,10 @@ home_page = """
 				color: red;
 				height: 5px;
 			}
-
+			img {
+				width: 400px;
+				height: 400px;
+			}
 			.scale-media {
             padding-bottom: 56.25%;
             position: relative;
@@ -85,6 +92,10 @@ home_page = """
             left: 0;
             top: 0;
             background-color: white;
+        }
+        input {
+        	width: 300px;
+        	height: 100px;
         }
 		</style>
 
@@ -150,33 +161,6 @@ modal = """
       </div>
     </div>
 """
-def add2home(html):
-	home_page += html
-# class Trailers(db.Model):
-# 	#trailer_data will be a pickled string prepresentation of a hash
-# 	#the hash will contain the keys movie_title, poster_image_link, youtube_trailer_link and the user_key
-# 	trailer_data = db.TextProperty(required=True)
-# 	trailer_submit_date = db.DateTimeProperty(auto_now_add=True)
-
-# 	#Trailers.is_key_present(user_key) returns true if the user_key has already made it to the list
-# 	#when a user adds a trailer to the list we will generate a random key for our user, we have to make sure
-# 	#that the generated key isnt already in our database
-# 	@classmethod
-# 	def is_user_present(cls, user_key):
-# 		all_trailers = Trailers.all()
-# 		for t in all_trailers:
-# 			trailer_d = pickle.loads(t.trailer_data)
-# 			if trailer_d['User'] == user_key:
-# 				return True
-# 		return False
-
-# 	@classmethod
-# 	def store_trailer(cls, uk, title, poster_image_link, youtube_trailer_link):
-# 		data = {'User':uk, 'Title':title, 'poster_image_link':poster_image_link, 'youtube_trailer_link': youtube_trailer_link}
-# 		new_trailer = Trailers(
-# 			trailer_data = pickle.dumps(data)
-# 		)
-# 		new_trailer.put()
 
 class MainHandler(webapp2.RequestHandler):
 
@@ -190,7 +174,7 @@ class MainHandler(webapp2.RequestHandler):
 	def render(self, template, **kwargs):
 		self.write(self.render_str(template, **kwargs))
 
-titles_already = []
+
 class HomePage(MainHandler):
 
 	def get(self):
@@ -208,14 +192,13 @@ class HomePage(MainHandler):
 		#local to the get request
 
 		global home_page
-		global titles_already
-
+		titles_so_far = movie_class.titles_already
 		sample_movies = movie_class.dylans_movies
 
 
 		for m in sample_movies:
-			if m.title not in titles_already:
-				titles_already.append(m.title)
+			if m.title not in titles_so_far:
+				titles_so_far.append(m.title)
 				html_video = m.create_html_video()
 				home_page += html_video
 
@@ -228,93 +211,39 @@ class HomePage(MainHandler):
 
 
 	def post(self):
-		#grab all movie data the user is enetering
-
-		global titles_already
+		#get our global home_page
 		global home_page
 
+		#grab the movie title the user is attempting to submit
 		movie_title = self.request.get("title")
-		if movie_title not in titles_already:
-			titles_already.append(movie_title)
+
+		#if the title is not in the list of titles uploaded so far
+		#we add the title to the list and grab the poster image file and the youtube url
+		if movie_title not in movie_class.titles_already:
+			movie_class.titles_already.append(movie_title)
 			poster_image_link = self.request.get("poster_image_link")
 			youtube_trailer_link = self.request.get("youtube_trailer_link")
 
+			#now that we have our data for our new movie object
+			#we create a new movie object from our friend over in movie_class.py | pass in the data
+			#get our html_video to add to our page
+			#then add it to the page lol
 			new_movie = movie_class.Movie(movie_title, poster_image_link, youtube_trailer_link)
 			html_video = new_movie.create_html_video()
 			home_page += html_video
 
+			#since we are using an ajax request we use the json module to turn some text in json text
+			#write the message in json to the success function of our ajax call
 			json_man = json.dumps("reload")
 			self.write(json_man)
+
+		#if the title is in titles_already
 		else:
+			#write to the ajax function the json string exists
+			#this will tell the client that the title they tried to submit already exists
+			#and display an error to the user
+
 			self.write(json.dumps("exists"));
-		
-
-
-
-
-
-
-
-
-
-		#here we get all trailer objects from our Trailers DB and create our trailer html page
-		#then we render home_page + trailer_page
-		#db.delete(Trailers.all())
-# 		trailer_html = create_trailer_page()
-
-# 		self.write(home_page + trailer_html + page_closing_tags)
-
-# 	def post(self):
-# 		movie_title = self.request.get("title")
-# 		poster_image_link = self.request.get("poster_image_link")
-# 		youtube_trailer_link = self.request.get("youtube_trailer_link")
-		
-# 		user_key_gen = create_user_key()
-
-# 		Trailers.store_trailer(user_key_gen, movie_title, poster_image_link, youtube_trailer_link)
-
-# 		trailer_html = create_trailer_page()
-
-# 		self.write(home_page + trailer_html + page_closing_tags)
-
-# #	""" % (trailer_data["User"], trailer_data["Title"], trailer_data["poster_image_link"], trailer_data["youtube_trailer_link"])
-
-# #<video width="320" height="240"  poster="%s" source="%s"></video>
-# def get_hash():
-# 	return string.letters+string.digits+string.letters+string.digits
-
-# def create_player_key():
-#     return "".join([get_hash()[random.randrange(0, len(get_hash()))] for n in range(10)])
-
-# def create_user_key():
-# 	key = create_player_key()
-# 	while Trailers.is_user_present(key):
-# 		key = create_player_key()
-# 	return key
-	#create random key
-	#while random key is present in db
-		#create random key
-	#return key
-
-
-# class MainHandler(webapp2.RequestHandler):
-
-# 	def write(self, *args, **kwargs):
-#   	 	self.response.out.write(*args, **kwargs)
-        
-#     def render_str(self, template, **params):
-#     	t = jinja_env.get_template(template)
-#        	return t.render(params)
-
-#     def render(self, template, **kwargs):
-#     	self.write(self.render_str(template, **kwargs))
-
-# class HomePage(MainHandler):
-# 	def get(self):
-# 		self.response.out.write("<h1>Hello world</h1>")
-
-# 	def post(self):
-# 		pass
 
 app = webapp2.WSGIApplication([
     ('/', HomePage)
