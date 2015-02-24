@@ -1,13 +1,11 @@
 //function to run when the page is nice and loaded
 window.onload = function() {
-	//get our from element that sends new movie trailer data
-	var form = document.new_trailer_data;
 
 	//declare our input boxes
 	var input_boxes = [
-		form.title,
-		form.poster_image_link,
-		form.youtube_trailer_link
+		document.getElementById("title"),
+		document.getElementById("poster_image_link"),
+		document.getElementById("youtube_trailer_link")
 	];
 
 
@@ -17,7 +15,7 @@ window.onload = function() {
 	//add a jquery submit function to do some sanity checks on the input
 	//its very easy to look at the html code using dev tools and remove the required 
 	//attributes from the input fields, thus allowing somebody to send bad data to the server
-	$(form).submit(function() {
+	$("#submit_button").click(function() {
 
 		//any inputs that need to be checked we can place them in here
 		//so the user knows what to be corrected
@@ -36,13 +34,29 @@ window.onload = function() {
 
 		//if we have inputs that need to be corrected
 		//we call creatError and pass in the inputs_need_correction array
-		console.log(inputs_need_correction)
 		if (inputs_need_correction.length > 0) {
 			createErr(inputs_need_correction);
-			return false;
 		}
-		
-		return true;
+		else {
+			$.ajax({
+				url: document.URL,
+				data: {
+					"title": input_boxes[0].value,
+					"poster_image_link": input_boxes[1].value,
+					"youtube_trailer_link": input_boxes[2].value
+				},
+				type: "POST",
+				dataType: "json",
+				success: function(returned_html) {
+					if (returned_html == "reload") {
+						reloadPage();
+					}
+					else if (returned_html == "exists") {
+						alert("That title already exists");
+					}
+				}
+			})
+		}
 	})
 
 	
@@ -50,6 +64,11 @@ window.onload = function() {
 
 //declare function isEmpty takes in a string 
 //returns true if empty string
+
+function reloadPage() {
+	var chill = window.location;
+	window.location = chill.protocol + '//' + chill.host + chill.pathname;
+}
 function isEmpty(strang) {
 	return strang == "";
 }

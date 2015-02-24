@@ -21,8 +21,9 @@ import re
 import random
 import pickle
 import string
+import json
+import movie_class
 from google.appengine.ext import db
-# import movie_class
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), 
@@ -44,7 +45,6 @@ home_page = """
 		<script src="/js/home_page.js"></script>	
 		<style>
 
-			
 			#form_error {
 				display: none;
 			}
@@ -53,6 +53,7 @@ home_page = """
 			}
 			.margin-top-2 {
 				margin-top: 2%;
+				display: inline;
 			}
 			.border-blue {
 				border: 3px solid #0066ff;
@@ -68,7 +69,8 @@ home_page = """
 				margin: 0px auto;
 			}
 			hr {
-				color: black;
+				color: red;
+				height: 5px;
 			}
 
 			.scale-media {
@@ -103,12 +105,11 @@ home_page = """
 				<div class="col-md-12">
 
 					<p class="lead">Want To Add a trailer To The List</p>
-					<form name="new_trailer_data" method="post">
-						<input type="text" name="title" placeholder="Movie Title" required >
-						<input type="text" name="poster_image_link" placeholder="Poster Image Url" required >
-						<input type="text" name="youtube_trailer_link" placeholder="Youtube Trailer Link" required >
+						<input type="text" id="title" placeholder="Movie Title" required >
+						<input type="text" id="poster_image_link" placeholder="Poster Image Url" required >
+						<input type="text" id="youtube_trailer_link" placeholder="Youtube Trailer Link" required >
 						
-						<br><input class="margin-top-2 btn btn-primary" type="submit" name="subm" value="Add To My Trailers">
+						<br><input class="margin-top-2 btn btn-primary" id="submit_button" name="subm" value="Add To My Trailers">
 					</form>
 				</div>
 
@@ -126,6 +127,9 @@ home_page = """
 				</div>
 			</div>
 		</div>
+
+		<div class="row text-center margin-top-2">
+
 """
 page_closing_tags = """
 
@@ -146,31 +150,33 @@ modal = """
       </div>
     </div>
 """
-class Trailers(db.Model):
-	#trailer_data will be a pickled string prepresentation of a hash
-	#the hash will contain the keys movie_title, poster_image_link, youtube_trailer_link and the user_key
-	trailer_data = db.TextProperty(required=True)
-	trailer_submit_date = db.DateTimeProperty(auto_now_add=True)
+def add2home(html):
+	home_page += html
+# class Trailers(db.Model):
+# 	#trailer_data will be a pickled string prepresentation of a hash
+# 	#the hash will contain the keys movie_title, poster_image_link, youtube_trailer_link and the user_key
+# 	trailer_data = db.TextProperty(required=True)
+# 	trailer_submit_date = db.DateTimeProperty(auto_now_add=True)
 
-	#Trailers.is_key_present(user_key) returns true if the user_key has already made it to the list
-	#when a user adds a trailer to the list we will generate a random key for our user, we have to make sure
-	#that the generated key isnt already in our database
-	@classmethod
-	def is_user_present(cls, user_key):
-		all_trailers = Trailers.all()
-		for t in all_trailers:
-			trailer_d = pickle.loads(t.trailer_data)
-			if trailer_d['User'] == user_key:
-				return True
-		return False
+# 	#Trailers.is_key_present(user_key) returns true if the user_key has already made it to the list
+# 	#when a user adds a trailer to the list we will generate a random key for our user, we have to make sure
+# 	#that the generated key isnt already in our database
+# 	@classmethod
+# 	def is_user_present(cls, user_key):
+# 		all_trailers = Trailers.all()
+# 		for t in all_trailers:
+# 			trailer_d = pickle.loads(t.trailer_data)
+# 			if trailer_d['User'] == user_key:
+# 				return True
+# 		return False
 
-	@classmethod
-	def store_trailer(cls, uk, title, poster_image_link, youtube_trailer_link):
-		data = {'User':uk, 'Title':title, 'poster_image_link':poster_image_link, 'youtube_trailer_link': youtube_trailer_link}
-		new_trailer = Trailers(
-			trailer_data = pickle.dumps(data)
-		)
-		new_trailer.put()
+# 	@classmethod
+# 	def store_trailer(cls, uk, title, poster_image_link, youtube_trailer_link):
+# 		data = {'User':uk, 'Title':title, 'poster_image_link':poster_image_link, 'youtube_trailer_link': youtube_trailer_link}
+# 		new_trailer = Trailers(
+# 			trailer_data = pickle.dumps(data)
+# 		)
+# 		new_trailer.put()
 
 class MainHandler(webapp2.RequestHandler):
 
@@ -184,95 +190,107 @@ class MainHandler(webapp2.RequestHandler):
 	def render(self, template, **kwargs):
 		self.write(self.render_str(template, **kwargs))
 
+titles_already = []
 class HomePage(MainHandler):
 
 	def get(self):
+
+		#when we render the home_page we get our sample movie_objects from movie_class
+		#iterate through each movie_object
+		#store trailer_data
+		#store the call to create_html_video on the trailer_data
+		#add that html to the page
+
+		#a note to the udacity reviewer. Before when I wrote the code
+		#I didnt declare home_page global so imagine that line taken out
+		#it gave me this unboundLocalError saying that home_page is being referenced before assignment
+		#that is because in the get method, home_page was being declared
+		#local to the get request
+
+		global home_page
+		global titles_already
+
+		sample_movies = movie_class.dylans_movies
+
+
+		for m in sample_movies:
+			if m.title not in titles_already:
+				titles_already.append(m.title)
+				html_video = m.create_html_video()
+				home_page += html_video
+
+		#add page closing tags
+		home_page += page_closing_tags
+
+		#display the awesome page we have dynamically created
+		self.write(home_page)
+
+
+
+	def post(self):
+		#grab all movie data the user is enetering
+
+		global titles_already
+		global home_page
+
+		movie_title = self.request.get("title")
+		if movie_title not in titles_already:
+			titles_already.append(movie_title)
+			poster_image_link = self.request.get("poster_image_link")
+			youtube_trailer_link = self.request.get("youtube_trailer_link")
+
+			new_movie = movie_class.Movie(movie_title, poster_image_link, youtube_trailer_link)
+			html_video = new_movie.create_html_video()
+			home_page += html_video
+
+			json_man = json.dumps("reload")
+			self.write(json_man)
+		else:
+			self.write(json.dumps("exists"));
+		
+
+
+
+
+
+
+
+
+
 		#here we get all trailer objects from our Trailers DB and create our trailer html page
 		#then we render home_page + trailer_page
 		#db.delete(Trailers.all())
-		trailer_html = create_trailer_page()
+# 		trailer_html = create_trailer_page()
 
-		self.write(home_page + trailer_html + page_closing_tags)
+# 		self.write(home_page + trailer_html + page_closing_tags)
 
-	def post(self):
-		movie_title = self.request.get("title")
-		poster_image_link = self.request.get("poster_image_link")
-		youtube_trailer_link = self.request.get("youtube_trailer_link")
+# 	def post(self):
+# 		movie_title = self.request.get("title")
+# 		poster_image_link = self.request.get("poster_image_link")
+# 		youtube_trailer_link = self.request.get("youtube_trailer_link")
 		
-		user_key_gen = create_user_key()
+# 		user_key_gen = create_user_key()
 
-		Trailers.store_trailer(user_key_gen, movie_title, poster_image_link, youtube_trailer_link)
+# 		Trailers.store_trailer(user_key_gen, movie_title, poster_image_link, youtube_trailer_link)
 
-		trailer_html = create_trailer_page()
+# 		trailer_html = create_trailer_page()
 
-		self.write(home_page + trailer_html + page_closing_tags)
+# 		self.write(home_page + trailer_html + page_closing_tags)
 
-def create_trailer_page():
-	trailer_html = """
-	"""
-	#get all trailer objects
-	#iterate throuhg them
-	#for each trailer element we call a function called create_html_video 
-	#passing in current element.trailer_data
-	all_trailer_objects = Trailers.all()
-	for t in all_trailer_objects:
-		trailer_html += create_html_video(pickle.loads(t.trailer_data))
-	return trailer_html
+# #	""" % (trailer_data["User"], trailer_data["Title"], trailer_data["poster_image_link"], trailer_data["youtube_trailer_link"])
 
-def create_html_video(trailer_data):
-	youtube_link = trailer_data["youtube_trailer_link"]
-	index = youtube_link.index("v=")+2
-	youtube_id = youtube_link[index:]
-	html_video = """
-	<div class="row text-center margin-top-2">
-		<div class="col-md-12">
-			<div class='user lead'>User -%s-</div>
-			<div class="lead title">Title -%s-</div>
-			<div class="video-pic">
-				<img src="%s" data-toggle='modal' data-target='#%s' />
-			</div>
-		</div>
-	</div>
-	<hr>
+# #<video width="320" height="240"  poster="%s" source="%s"></video>
+# def get_hash():
+# 	return string.letters+string.digits+string.letters+string.digits
 
-	<div class="modal" id="%s">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <a href="#" class="hanging-close" data-dismiss="modal" aria-hidden="true">
-            <img src="https://lh5.ggpht.com/v4-628SilF0HtHuHdu5EzxD7WRqOrrTIDi_MhEG6_qkNtUK5Wg7KPkofp_VJoF7RS2LhxwEFCO1ICHZlc-o_=s0#w=24&h=24"/>
-          </a>
-          <div class="scale-media" id="trailer-video-container">
-          	<iframe width="854" height="510" src="https://www.youtube.com/embed/%s" frameborder="0" allowfullscreen></iframe>
-          </div>
-        </div>
-      </div>
-    </div>
-	""" % (
+# def create_player_key():
+#     return "".join([get_hash()[random.randrange(0, len(get_hash()))] for n in range(10)])
 
-		trailer_data["User"],
-		trailer_data["Title"],
-		trailer_data["poster_image_link"],
-		trailer_data["User"],
-		trailer_data["User"],
-		youtube_id
-		# trailer_data["youtube_trailer_link"],
-		# trailer_data["youtube_trailer_link"]
-	)
-	return html_video
-#	""" % (trailer_data["User"], trailer_data["Title"], trailer_data["poster_image_link"], trailer_data["youtube_trailer_link"])
-
-#<video width="320" height="240"  poster="%s" source="%s"></video>
-def get_hash():
-	return string.letters+string.digits+string.letters+string.digits
-
-def create_player_key():
-    return "".join([get_hash()[random.randrange(0, len(get_hash()))] for n in range(10)])
-
-def create_user_key():
-	key = create_player_key()
-	while Trailers.is_user_present(key):
-		key = create_player_key()
-	return key
+# def create_user_key():
+# 	key = create_player_key()
+# 	while Trailers.is_user_present(key):
+# 		key = create_player_key()
+# 	return key
 	#create random key
 	#while random key is present in db
 		#create random key
