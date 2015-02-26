@@ -97,6 +97,7 @@ home_page = """
         	width: 300px;
         	height: 100px;
         }
+       
 		</style>
 
 	</head>
